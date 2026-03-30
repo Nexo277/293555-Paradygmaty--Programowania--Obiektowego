@@ -19,7 +19,7 @@ void wpiszDane(int dni, int &nrIndeksu, string &imie, string &nazwisko, bool *&o
     }
 }
 void pokazDane(int dni, int nrIndeksu, string imie, string nazwisko, bool *obecnosc) {
-    cout << nrIndeksu << " " << imie << " " << nazwisko << " | Dni: ";
+    cout << nrIndeksu << " " << imie << " " << nazwisko << " |Dni: ";
     if(obecnosc != nullptr) {
     for (int i = 0; i < dni; i++) {
         cout << *(obecnosc + i) << " ";
