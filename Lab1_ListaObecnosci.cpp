@@ -1,44 +1,42 @@
 #include <iostream>
 #include <string>
 
+
 using namespace std;
 
-class Uczen {
-public:
-    int nrIndeksu;
-    string imie;
-    string nazwisko;
-    bool *obecnosc;
-
-    void wpiszDane(int dni) {
-        obecnosc = new bool[dni];
-        cout << "Nr indeksu: ";
-        cin >> nrIndeksu;
-        cout << "Imie: ";
-        cin >> imie;
-        cout << "Nazwisko: ";
-        cin >> nazwisko;
-        for (int i = 0; i < dni; i++) {
-            cout << "Obecnosc dzien " << i + 1 << " (1/0): ";
-            cin >> *(obecnosc + i);
-        }
+void wpiszDane(int dni, int &nrIndeksu, string &imie, string &nazwisko, bool *&obecnosc) {
+    obecnosc = new bool[dni];
+    cout << "Nr indeksu: ";
+    cin >> nrIndeksu;
+    cout << "Imie: ";
+    cin >> imie;
+    cout << "Nazwisko: ";
+    cin >> nazwisko;
+    obecnosc = new bool[dni];
+    for (int i = 0; i < dni; i++) {
+        cout << "Obecnosc dzien " << i + 1 << " (1/0): ";
+        cin >> *(obecnosc + i);
     }
-
-    void pokazDane(int dni) {
-        cout << nrIndeksu << " " << imie << " " << nazwisko << " | Dni: ";
-        for (int i = 0; i < dni; i++) {
-            cout << *(obecnosc + i) << " ";
-        }
-        cout << endl;
+}
+void pokazDane(int dni, int nrIndeksu, string imie, string nazwisko, bool *obecnosc) {
+    cout << nrIndeksu << " " << imie << " " << nazwisko << " | Dni: ";
+    if(obecnosc != nullptr) {
+    for (int i = 0; i < dni; i++) {
+        cout << *(obecnosc + i) << " ";
     }
-};
-
+    cout << endl;
+}
+}
 int main() {
+
     int liczbaDni;
     cout << "Na ile dni zrobic liste? ";
     cin >> liczbaDni;
 
-    Uczen *tablica = new Uczen[10];
+    int nrIndeksu[10];
+    string imie[10];
+    string nazwisko[10];
+    bool *obecnosc[10] = {nullptr};
     int licznik = 0;
     int menu;
 
@@ -48,7 +46,7 @@ int main() {
 
         if (menu == 1) {
             if (licznik < 10) {
-                (tablica + licznik)->wpiszDane(liczbaDni);
+                wpiszDane(liczbaDni, nrIndeksu[licznik], imie[licznik], nazwisko[licznik], obecnosc[licznik]);
                 licznik++;
             }
         } 
@@ -57,14 +55,8 @@ int main() {
             cout << "Podaj nazwisko: ";
             cin >> klucz;
             for (int i = 0; i < licznik; i++) {
-                if ((tablica + i)->nazwisko == klucz) {
-                    int dzien;
-                    cout << "Ktory dzien zmienic (1-" << liczbaDni << "): ";
-                    cin >> dzien;
-                    if (dzien >= 1 && dzien <= liczbaDni) {
-                        cout << "Nowa obecnosc (1/0): ";
-                        cin >> *((tablica + i)->obecnosc + (dzien - 1));
-                    }
+                if (nazwisko[i] == klucz) {
+                    wpiszDane(liczbaDni, nrIndeksu[i], imie[i], nazwisko[i], obecnosc[i]);
                     break;
                 }
             }
@@ -74,9 +66,13 @@ int main() {
             cout << "Podaj nazwisko: ";
             cin >> klucz;
             for (int i = 0; i < licznik; i++) {
-                if ((tablica + i)->nazwisko == klucz) {
+                if (nazwisko[i] == klucz) {
+                    delete[] obecnosc[i];
                     for (int j = i; j < licznik - 1; j++) {
-                        *(tablica + j) = *(tablica + j + 1);
+                        nrIndeksu[j] = nrIndeksu[j + 1];
+                        imie[j] = imie[j + 1];
+                        nazwisko[j] = nazwisko[j + 1];
+                        obecnosc[j] = obecnosc[j + 1];
                     }
                     licznik--;
                     break;
@@ -85,14 +81,17 @@ int main() {
         } 
         else if (menu == 4) {
             for (int i = 0; i < licznik; i++) {
-                (tablica + i)->pokazDane(liczbaDni);
-            }
-        } 
+                pokazDane(liczbaDni, nrIndeksu[i], imie[i], nazwisko[i], obecnosc[i]);
+            }       
+}
         else if (menu == 0) {
             break;
         }
     }
 
-    delete[] tablica;
+    for (int i = 0; i < licznik; i++) {
+        delete[] obecnosc[i];
+    }
+
     return 0;
 }
