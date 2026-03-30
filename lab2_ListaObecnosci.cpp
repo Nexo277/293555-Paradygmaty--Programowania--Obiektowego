@@ -120,7 +120,7 @@ while(true){
             }
         } 
         else if (menu == 4) {
-            cout << "\n--- Lista Obecnosci " << nrTablicy << " ---\n";
+            cout << "\n-- Lista Obecnosci " << nrTablicy << " ---\n";
             for (int i = 0; i < *aktualnyLicznik; i++) {
                 (aktualnaTablica + i)->pokazDane(liczbaDni);
             }
