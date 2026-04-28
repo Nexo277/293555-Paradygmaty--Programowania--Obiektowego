@@ -233,4 +233,5 @@ int main() {
     for (int i = 0; i < licznik2; i++) delete tabOs2[i];
 
     return 0;
+    
 }
