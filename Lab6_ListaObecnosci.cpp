@@ -1,14 +1,26 @@
 #include <iostream>
 #include <string>
+#include <fstream>
+
 using namespace std;
 
 class ISerializable {
 public:
     virtual string serialize() = 0;
+    virtual ~ISerializable() {}
 };
 
 void drukuj(ISerializable *obj) {
     cout << obj->serialize() << "\n";
+}
+
+void ZapiszDoPliku(ISerializable *obj, string nazwaPliku) {
+    ofstream plik;
+    plik.open(nazwaPliku);
+    if(plik.is_open()) {
+        plik << obj->serialize() << "\n";
+        plik.close();
+    }
 }
 
 class Osoba {
@@ -52,10 +64,14 @@ public:
     }
 };
 
-class Pracownik : public Osoba {
+class Pracownik : public Osoba, public ISerializable {
 public:
     void drukuj() {
         cout << "PRACOWNIK: " << nazwisko << " " << imie << "\n";
+    }
+
+    string serialize() {
+        return "PRACOWNIK: " + nazwisko + " " + imie;
     }
 };
 
@@ -133,9 +149,22 @@ public:
         }
     }
 
-    string serialize() {
-        string wynik = "Lista nr " + to_string(nr) + " - " + tekst;
+    string serialize() override {
+        string wynik = "=== Lista nr " + to_string(nr) + " - " + tekst + " ===\n";
+        if(iloscOsob == 0) {
+            wynik += "  (lista jest pusta)\n";
+        }else{
+            for(int i = 0; i< iloscOsob; i++) {
+                ISerializable* sObj = dynamic_cast<ISerializable*>(tabOsob[i]);
+                if (sObj) {
+                    wynik += "  " + sObj->serialize();
+                } else {
+                    wynik += "  Osoba: " + tabOsob[i]->getNazwisko() + " " + tabOsob[i]->getImie();
+                }
+                wynik += " -> Obecnosc: " + string(tabObecnosc[i] ? "TAK" : "NIE") + "\n";
+        }
         return wynik;
+    }
     }
 };
 
@@ -307,6 +336,36 @@ private:
             cout << "Niepoprawny wybor!\n";
         }
     }
+    void zapisz(ISerializable *obj) {
+        cout << "\n[ZAPIS DO PLIKU .TXT]\n";
+        cout << obj->serialize() << "\n";
+        cout << "[KONIEC ZAPISU]\n";
+    }
+    void menuZapiszCalaListe() {
+        cout << "Wybierz liste (1-" << iloscList << "): ";
+        int nr_listy; cin >> nr_listy;
+        
+        ZapiszDoPliku(&tablicaList[nr_listy - 1], "lista.txt");
+        cout << "Zapisano cala liste do pliku lista.txt!\n";
+    }
+
+    void menuZapiszWybranaOsobe() {
+        cout << "Podaj nazwisko osoby: ";
+        string nazwisko; cin >> nazwisko;
+        int idx = znajdzStudenta(nazwisko);
+        
+        if (idx != -1) {
+            ISerializable* os = dynamic_cast<ISerializable*>(tabStudentow[idx]);
+            if (os) {
+                ZapiszDoPliku(os, "osoba.txt");
+                cout << "Zapisano osobe do pliku osoba.txt!\n";
+            } else {
+                cout << "Ta osoba nie moze byc zapisana!\n";
+            }
+        } else {
+            cout << "Nie znaleziono osoby!\n";
+        }
+    }
 
 public:
     InterfejsUzytkownika(Osoba **tab, int iSt, ListaObecnosci *listy, int iList)
@@ -330,6 +389,10 @@ public:
             cout << "3. Ustaw obecnosc osoby na liscie\n";
             cout << "4. Usun osobe z listy\n";
             cout << "5. Zmien dane osoby\n";
+
+            cout << "6. Zapisz cala liste do pliku .txt\n";
+            cout << "7. Zapisz wybrana osobe do pliku .txt\n";
+            
             cout << "9. Wyjscie\n";
             cout << "Wybor: ";
             cin >> wybor;
@@ -341,6 +404,8 @@ public:
                 case 3: menuUstawObecnosc();    break;
                 case 4: menuUsunZListy();       break;
                 case 5: menuZmienDane();        break;
+                case 6: menuZapiszCalaListe(); break;
+                case 7: menuZapiszWybranaOsobe();break;
                 case 9: return;
                 default: cout << "Niepoprawny wybor!\n";
             }
@@ -349,6 +414,8 @@ public:
 };
 
 int main() {
+   
+
     Osoba* tablicaStudentow[10] = {nullptr};
     ListaObecnosci tablicaList[2];
 
