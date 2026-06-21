@@ -1,0 +1,528 @@
+#include <iostream>
+#include <string>
+#include <fstream>
+#include <map>
+
+using namespace std;
+
+class ISerializable {
+public:
+    virtual string serialize() = 0;
+    virtual ~ISerializable() {}
+};
+
+class IEksportowalny {
+public:
+    virtual map<string, string> eksportuj() = 0;
+    virtual ~IEksportowalny() {}
+};
+
+class IExporter {
+public:
+    virtual void wykonajEksport(IEksportowalny* obj, string nazwaPliku) = 0;
+    virtual ~IExporter() {}
+};
+
+class ExporterTxt : public IExporter {
+public:
+    void wykonajEksport(IEksportowalny* obj, string nazwaPliku) override {
+        ofstream plik;
+        plik.open(nazwaPliku);
+        if (plik.is_open()) {
+            map<string, string> dane = obj->eksportuj();
+            map<string, string>::iterator it;
+            for (it = dane.begin(); it != dane.end(); ++it) {
+                plik << it->first << ":" << it->second << "\n";
+            }
+            plik.close();
+            cout << "Wyeksportowano dane do pliku: " << nazwaPliku << endl;
+        } else {
+            cout << "Blad otwarcia pliku!" << endl;
+        }
+    }
+};
+
+class Osoba {
+protected:
+    string imie;
+    string nazwisko;
+    bool   ustawiony;
+    
+public:
+    Osoba() : ustawiony(false) {}
+
+    void   setImie(string w)     { if (w.length() >= 3) imie = w; }
+    void   setNazwisko(string w) { if (w.length() >= 3) nazwisko = w; }
+
+    string getImie()             { return imie; }
+    string getNazwisko()         { return nazwisko; }
+
+    void setUstawiony(bool v)    { ustawiony = v; }
+    bool czyUstawiony()          { return ustawiony; }
+
+    virtual void drukuj() {
+        cout << "Osoba: " << nazwisko << " " << imie << "\n";
+    }
+    virtual ~Osoba() {}
+};
+
+class Student : public Osoba, public ISerializable, public IEksportowalny {
+private:
+    int nr_indeksu;
+public:
+    Student() : nr_indeksu(0) {}
+    
+    void setIndeks(int w) { if (to_string(w).length() >= 4) nr_indeksu = w; }
+    int  getIndeks()      { return nr_indeksu; }
+
+    void drukuj() override {
+        cout << "STUDENT: " << nr_indeksu << " | " << nazwisko << " " << imie << "\n";
+    }
+
+    string serialize() override {
+        return "STUDENT: " + to_string(nr_indeksu) + " | " + nazwisko + " " + imie;
+    }
+
+    map<string, string> eksportuj() override {
+        return {
+            {"typ", "Student"},
+            {"imie", imie},
+            {"nazwisko", nazwisko},
+            {"indeks", to_string(nr_indeksu)}
+        };
+    }
+};
+
+class Pracownik : public Osoba, public ISerializable, public IEksportowalny {
+public:
+    void drukuj() override {
+        cout << "PRACOWNIK: " << nazwisko << " " << imie << "\n";
+    }
+
+    string serialize() override {
+        return "PRACOWNIK: " + nazwisko + " " + imie;
+    }
+
+    map<string, string> eksportuj() override {
+        return {
+            {"typ", "Pracownik"},
+            {"imie", imie},
+            {"nazwisko", nazwisko}
+        };
+    }
+};
+
+class ListaObecnosci : public ISerializable, public IEksportowalny {
+private:
+    Osoba* tabOsob[10];
+    bool    tabObecnosc[10];
+    int     iloscOsob;
+    int     nr;
+    string  tekst;
+    int     prog;
+
+public:
+    ListaObecnosci() : iloscOsob(0), nr(0), tekst(""), prog(50) {
+        for (int i = 0; i < 10; i++) {
+            tabOsob[i]     = nullptr;
+            tabObecnosc[i] = false;
+        }
+    }
+
+    ~ListaObecnosci() {
+        for (int i = 0; i < 10; i++) {
+            tabOsob[i] = nullptr;
+        }
+    }
+
+    void   setNr(int v)       { nr = v; }
+    void   setTekst(string v) { tekst = v; }
+    void   setProg(int v)     { if (v >= 0 && v <= 100) prog = v; }
+    int    getNr()            { return nr; }
+    string getTekst()         { return tekst; }
+    int    getProg()          { return prog; }
+    int    getIloscOsob()     { return iloscOsob; }
+
+    bool dodajStudenta(Osoba* s) {
+        if (iloscOsob >= 10) return false;
+        for (int i = 0; i < iloscOsob; i++) {
+            if (tabOsob[i] == s) return false;
+        }
+        tabOsob[iloscOsob]     = s;
+        tabObecnosc[iloscOsob] = false;
+        iloscOsob++;
+        return true;
+    }
+
+    bool ustawObecnosc(string nazwisko, bool status) {
+        for (int i = 0; i < iloscOsob; i++) {
+            if (tabOsob[i]->getNazwisko() == nazwisko) {
+                tabObecnosc[i] = status;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool usunStudenta(string nazwisko) {
+        for (int i = 0; i < iloscOsob; i++) {
+            if (tabOsob[i]->getNazwisko() == nazwisko) {
+                for (int j = i; j < iloscOsob - 1; j++) {
+                    tabOsob[j]     = tabOsob[j + 1];
+                    tabObecnosc[j] = tabObecnosc[j + 1];
+                }
+                iloscOsob--;
+                tabOsob[iloscOsob] = nullptr;
+                tabObecnosc[iloscOsob] = false;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void drukuj() {
+        cout << "=== Lista nr " << nr << " | \"" << tekst
+             << "\" | Prog zaliczenia: " << prog << "% ===\n";
+        if (iloscOsob == 0) {
+            cout << "  (lista jest pusta)\n";
+            return;
+        }
+        for (int i = 0; i < iloscOsob; i++) {
+            cout << "  ";
+            tabOsob[i]->drukuj();
+            cout << "    -> Obecnosc: " << (tabObecnosc[i] ? "TAK" : "NIE") << "\n";
+        }
+    }
+
+    string serialize() override {
+        string wynik = "=== Lista nr " + to_string(nr) + " - " + tekst + " ===\n";
+        if (iloscOsob == 0) {
+            wynik += "  (lista jest pusta)\n";
+        } else {
+            for (int i = 0; i < iloscOsob; i++) {
+                ISerializable* sObj = dynamic_cast<ISerializable*>(tabOsob[i]);
+                if (sObj) {
+                    wynik += "  " + sObj->serialize();
+                } else {
+                    wynik += "  Osoba: " + tabOsob[i]->getNazwisko() + " " + tabOsob[i]->getImie();
+                }
+                wynik += " -> Obecnosc: " + string(tabObecnosc[i] ? "TAK" : "NIE") + "\n";
+            }
+        }
+        return wynik;
+    }
+
+    map<string, string> eksportuj() override {
+        map<string, string> dane;
+        dane["typ"] = "Lista";
+        dane["nr"] = to_string(nr);
+        dane["tekst"] = tekst;
+        
+        string studenci = "";
+        for (int i = 0; i < iloscOsob; i++) {
+            studenci += tabOsob[i]->getNazwisko() + " " + tabOsob[i]->getImie();
+            if (tabObecnosc[i]) {
+                studenci += "(1); ";
+            } else {
+                studenci += "(0); ";
+            }
+        }
+        dane["studenci"] = studenci;
+        return dane;
+    }
+};
+
+void ZapiszDoPliku(ISerializable* obj, string nazwaPliku) {
+    ofstream plik;
+    plik.open(nazwaPliku);
+    if (plik.is_open()) {
+        plik << obj->serialize() << "\n";
+        plik.close();
+    }
+}
+
+class InterfejsUzytkownika {
+private:
+    Osoba** tabStudentow;
+    ListaObecnosci* tablicaList;
+    int             iloscStudentow;
+    int             iloscList;
+    int             licznik;
+
+    int znajdzStudenta(string nazwisko) {
+        for (int i = 0; i < licznik; i++) {
+            if (tabStudentow[i]->getNazwisko() == nazwisko)
+                return i;
+        }
+        return -1;
+    }
+
+    void pokazWszystkichStudentow() {
+        if (licznik == 0) {
+            cout << "  (baza jest pusta)\n";
+            return;
+        }
+        for (int i = 0; i < licznik; i++) {
+            cout << "  " << i + 1 << ". ";
+            tabStudentow[i]->drukuj();
+        }
+    }
+
+    void menuDodajStudenta() {
+        if (licznik >= iloscStudentow) {
+            cout << "Blad: Baza jest pelna!\n";
+            return;
+        }
+        
+        cout << "Kogo chcesz dodac?\n1. Student\n2. Pracownik\nWybor: ";
+        int typ; cin >> typ;
+        if (typ != 1 && typ != 2) {
+            cout << "Blad: Niepoprawny wybor!\n";
+            return;
+        }
+
+        string nazwisko, imie;
+        cout << "Nazwisko: "; cin >> nazwisko;
+        cout << "Imie: ";     cin >> imie;
+
+        if (nazwisko.length() < 3 || imie.length() < 3) {
+            cout << "Blad: Imie i nazwisko musza miec min. 3 znaki!\n";
+            return;
+        }
+        if (znajdzStudenta(nazwisko) != -1) {
+            cout << "Blad: Osoba o takim nazwisku juz istnieje!\n";
+            return;
+        }
+
+        if (typ == 1) {
+            int nr;
+            cout << "Indeks: "; cin >> nr;
+            if (to_string(nr).length() < 4) {
+                cout << "Blad: Indeks musi miec min. 4 cyfry!\n";
+                return;
+            }
+            Student* s = new Student();
+            s->setNazwisko(nazwisko);
+            s->setImie(imie);
+            s->setIndeks(nr);
+            s->setUstawiony(true);
+            tabStudentow[licznik] = s;
+        } else {
+            Pracownik* p = new Pracownik();
+            p->setNazwisko(nazwisko);
+            p->setImie(imie);
+            p->setUstawiony(true);
+            tabStudentow[licznik] = p;
+        }
+
+        licznik++;
+        cout << "Osoba zostala dodana do bazy!\n";
+    }
+
+    void menuPrzypiszDoListy() {
+        cout << "Dostepne osoby w bazie:\n";
+        pokazWszystkichStudentow();
+
+        string nazwisko;
+        cout << "Podaj nazwisko osoby: "; cin >> nazwisko;
+        int idx = znajdzStudenta(nazwisko);
+        if (idx == -1) {
+            cout << "Blad: Nie znaleziono osoby o takim nazwisku!\n";
+            return;
+        }
+
+        cout << "Wybierz liste (1-" << iloscList << "): ";
+        int nr_listy; cin >> nr_listy;
+        if (nr_listy < 1 || nr_listy > iloscList) {
+            cout << "Blad: Niepoprawny numer listy!\n";
+            return;
+        }
+
+        if (tablicaList[nr_listy - 1].dodajStudenta(tabStudentow[idx]))
+            cout << "Osoba zostala przypisana do listy!\n";
+        else
+            cout << "Blad: Osoba juz jest na tej liscie lub lista jest pelna!\n";
+    }
+
+    void menuPokazListe() {
+        cout << "Wybierz liste (1-" << iloscList << "): ";
+        int nr_listy; cin >> nr_listy;
+        if (nr_listy < 1 || nr_listy > iloscList) {
+            cout << "Blad: Niepoprawny numer listy!\n";
+            return;
+        }
+        tablicaList[nr_listy - 1].drukuj();
+    }
+
+    void menuUstawObecnosc() {
+        cout << "Wybierz liste (1-" << iloscList << "): ";
+        int nr_listy; cin >> nr_listy;
+        if (nr_listy < 1 || nr_listy > iloscList) {
+            cout << "Blad: Niepoprawny numer listy!\n";
+            return;
+        }
+        string nazwisko;
+        bool status;
+        cout << "Nazwisko: ";        cin >> nazwisko;
+        cout << "Obecnosc (1/0): "; cin >> status;
+
+        if (tablicaList[nr_listy - 1].ustawObecnosc(nazwisko, status))
+            cout << "Obecnosc zostala zaktualizowana!\n";
+        else
+            cout << "Blad: Nie znaleziono osoby na tej liscie!\n";
+    }
+
+    void menuUsunZListy() {
+        cout << "Wybierz liste (1-" << iloscList << "): ";
+        int nr_listy; cin >> nr_listy;
+        if (nr_listy < 1 || nr_listy > iloscList) {
+            cout << "Blad: Niepoprawny numer listy!\n";
+            return;
+        }
+        string nazwisko;
+        cout << "Nazwisko do usuniecia z listy: "; cin >> nazwisko;
+
+        if (tablicaList[nr_listy - 1].usunStudenta(nazwisko))
+            cout << "Osoba zostala usunieta z listy!\n";
+        else
+            cout << "Blad: Nie znaleziono osoby na tej liscie!\n";
+    }
+
+    void menuZmienDane() {
+        cout << "Podaj nazwisko osoby do edycji: ";
+        string nazwisko; cin >> nazwisko;
+        int idx = znajdzStudenta(nazwisko);
+        if (idx == -1) {
+            cout << "Blad: Nie znaleziono osoby!\n";
+            return;
+        }
+
+        cout << "Co chcesz zmienic?\n";
+        cout << "1. Imie\n";
+        int wybor; cin >> wybor;
+
+        if (wybor == 1) {
+            string imie; cout << "Nowe imie: "; cin >> imie;
+            tabStudentow[idx]->setImie(imie);
+            cout << "Imie zaktualizowane!\n";
+        } else {
+            cout << "Niepoprawny wybor!\n";
+        }
+    }
+
+    void menuZapiszCalaListe() {
+        cout << "Wybierz liste (1-" << iloscList << "): ";
+        int nr_listy; cin >> nr_listy;
+        ZapiszDoPliku(&tablicaList[nr_listy - 1], "lista.txt");
+        cout << "Zapisano cala liste do pliku lista.txt!\n";
+    }
+
+    void menuZapiszWybranaOsobe() {
+        cout << "Podaj nazwisko osoby: ";
+        string nazwisko; cin >> nazwisko;
+        int idx = znajdzStudenta(nazwisko);
+        
+        if (idx != -1) {
+            ISerializable* os = dynamic_cast<ISerializable*>(tabStudentow[idx]);
+            if (os) {
+                ZapiszDoPliku(os, "osoba.txt");
+                cout << "Zapisano osobe do pliku osoba.txt!\n";
+            } else {
+                cout << "Ta osoba nie moze byc zapisana!\n";
+            }
+        } else {
+            cout << "Nie znaleziono osoby!\n";
+        }
+    }
+
+    void menuEksportujListe() {
+        cout << "Wybierz liste (1-" << iloscList << "): ";
+        int nr_listy; cin >> nr_listy;
+        if (nr_listy < 1 || nr_listy > iloscList) return;
+
+        ExporterTxt exp;
+        exp.wykonajEksport(&tablicaList[nr_listy - 1], "eksport_lista.txt");
+    }
+
+    void menuEksportujOsobe() {
+        cout << "Podaj nazwisko osoby: ";
+        string nazwisko; cin >> nazwisko;
+        int idx = znajdzStudenta(nazwisko);
+        if (idx != -1) {
+            IEksportowalny* eks = dynamic_cast<IEksportowalny*>(tabStudentow[idx]);
+            if (eks) {
+                ExporterTxt exp;
+                exp.wykonajEksport(eks, "eksport_osoba.txt");
+            } else {
+                cout << "Nie mozna wyeksportowac!" << endl;
+            }
+        } else {
+            cout << "Nie znaleziono osoby!" << endl;
+        }
+    }
+
+public:
+    InterfejsUzytkownika(Osoba** tab, int iSt, ListaObecnosci* listy, int iList)
+        : tabStudentow(tab), iloscStudentow(iSt), tablicaList(listy),
+          iloscList(iList), licznik(0)
+    {
+        for (int i = 0; i < iloscList; i++) {
+            tablicaList[i].setNr(i + 1);
+            tablicaList[i].setTekst("Lista " + to_string(i + 1));
+            tablicaList[i].setProg(50);
+        }
+    }
+
+    void petla() {
+        int wybor;
+        while (true) {
+            cout << "\n========= MENU =========\n";
+            cout << "0. Dodaj osobe do bazy\n";
+            cout << "1. Przypisz osobe do listy\n";
+            cout << "2. Pokaz liste\n";
+            cout << "3. Ustaw obecnosc osoby na liscie\n";
+            cout << "4. Usun osobe z listy\n";
+            cout << "5. Zmien dane osoby\n";
+            cout << "6. Zapisz cala liste do pliku .txt\n";
+            cout << "7. Zapisz wybrana osobe do pliku .txt\n";
+            cout << "8. Eksportuj liste \n";
+            cout << "9. Eksportuj osobe \n";
+            cout << "10. Wyjscie\n";
+            cout << "Wybor: ";
+            cin >> wybor;
+
+            switch (wybor) {
+                case 0: menuDodajStudenta();    break;
+                case 1: menuPrzypiszDoListy();  break;
+                case 2: menuPokazListe();       break;
+                case 3: menuUstawObecnosc();    break;
+                case 4: menuUsunZListy();       break;
+                case 5: menuZmienDane();        break;
+                case 6: menuZapiszCalaListe();  break;
+                case 7: menuZapiszWybranaOsobe(); break;
+                case 8: menuEksportujListe();   break;
+                case 9: menuEksportujOsobe();   break;
+                case 10: return;
+                default: cout << "Niepoprawny wybor!\n";
+            }
+        }
+    }
+};
+
+int main() {
+    Osoba* tablicaStudentow[10];
+    for (int i = 0; i < 10; i++) tablicaStudentow[i] = nullptr;
+    
+    ListaObecnosci tablicaList[2];
+
+    InterfejsUzytkownika ui(tablicaStudentow, 10, tablicaList, 2);
+    ui.petla();
+
+    for (int i = 0; i < 10; i++) {
+        if (tablicaStudentow[i] != nullptr) {
+            delete tablicaStudentow[i];
+        }
+    }
+
+    return 0;
+}
